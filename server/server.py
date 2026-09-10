@@ -61,4 +61,3 @@ def score():
         return scores[username]
     else:
         return "You must provide a username parameter, and a valid score_key parameter.", 400
-
