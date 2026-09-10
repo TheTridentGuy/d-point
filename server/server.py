@@ -1,5 +1,8 @@
+import datetime
+
 from flask import Flask, render_template, request
 from prisma import Prisma
+from markupsafe import escape
 from secrets import token_urlsafe
 from enum import Enum
 
@@ -13,11 +16,12 @@ class SyncState(Enum):
     SYNC_LOST = 2
 
 
+db = Prisma()
+db.connect()
 app = Flask(__name__)
 state = SyncState.SYNC_WAITING
 current_sync_key = token_urlsafe(SYNC_KEY_BYTES)
 current_score_key = None
-scores = {}
 
 
 @app.route("/")
@@ -53,12 +57,25 @@ def sync():
 @app.route("/score")
 def score():
     score_key = request.values.get("score_key")
-    username = request.values.get("username")
+    username = str(escape(request.values.get("username"))[:32])
     if username and score_key == current_score_key:
-        if scores.get(username):
-            scores[username] += 1
+        user = db.user.find_unique(where={
+            "username": username
+        })
+        if user:
+            if user.last_score < (datetime.datetime.now() - datetime.timedelta(minutes=1)):
+                db.user.update(where={
+                    "username": username
+                }, data={
+                    "score": user.score + 1
+                })
+            else:
+                return "You can only score once per minute.", 429
         else:
-            scores[username] = 1
-        return scores[username]
+            user = db.user.create(data={
+                "username": username,
+                "score": 1
+            })
+        return user.score
     else:
         return "You must provide a username parameter, and a valid score_key parameter.", 400
