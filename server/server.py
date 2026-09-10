@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request
+from prisma import Prisma
 from secrets import token_urlsafe
 from enum import Enum
 
