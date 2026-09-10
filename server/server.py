@@ -36,7 +36,7 @@ def sync():
         else:
             current_score_key = score_key
             state = SyncState.SYNC_SYNCED
-            return current_sync_key, 200
+            return current_sync_key
     elif state == SyncState.SYNC_SYNCED:
         if score_key and sync_key == current_sync_key:
             current_score_key = score_key
@@ -47,8 +47,18 @@ def sync():
             return "You must provide a score_key URL parameter, and a valid sync_key URL parameter. Sync lost, restart the server to continue.", 400
     else:
         assert state == SyncState.SYNC_LOST
-        return "Sync lost, restart the server to continue."
+        return "Sync lost, restart the server to continue.", 422
 
 @app.route("/score")
 def score():
-    pass
+    score_key = request.values.get("score_key")
+    username = request.values.get("username")
+    if username and score_key == current_score_key:
+        if scores.get(username):
+            scores[username] += 1
+        else:
+            scores[username] = 1
+        return scores[username]
+    else:
+        return "You must provide a username parameter, and a valid score_key parameter.", 400
+
