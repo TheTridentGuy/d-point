@@ -14,4 +14,11 @@ model User {
   username String @unique
   score Int
   last_score DateTime @updatedAt
+  scores Score[]
+}
+
+model Score {
+  id Int @id @default(autoincrement())
+  user User @relation(fields: [datetime], references: [id])
+  datetime DateTime @default(now())
 }

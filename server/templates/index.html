@@ -2,30 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>D Point - Leaderboard</title>
-    <style>
-        * {
-            font-family: monospace;
-        }
-        .flex-row {
-            display: flex;
-            flex-direction: row;
-        }
-        .flex-col {
-            display: flex;
-            flex-direction: column;
-        }
-        .flex-grow {
-            flex-grow: 1;
-        }
-    </style>
+    <title>D-Point - Leaderboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="flex-col">
         <div class="flex-row">
-            <div>D Point Leaderboard</div>
+            <div id="title">D-Point Leaderboard</div>
             <div class="flex-grow"></div>
             <div>{{ sync_state }}</div>
+        </div>
+        <div class="flex-col">
+            {% for user in users %}
+                <div class="flex-row">
+                    <div class="score">{{ loop.index ~ ". " }}<b>{{ user.username|e }}</b> <i>with {{ user.score }} points (last scored at {{ user.last_score }})</i></div>
+                </div>
+            {% endfor %}
         </div>
     </div>
 </body>

@@ -1,0 +1,22 @@
+* {
+    font-family: sans-serif;
+    font-size: 20px;
+}
+
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.flex-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-grow {
+    flex-grow: 1;
+}
+
+#title {
+    font-size: 30px;
+}

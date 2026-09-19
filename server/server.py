@@ -1,13 +1,13 @@
 import datetime
-
 from flask import Flask, render_template, request
 from prisma import Prisma
-from markupsafe import escape
 from secrets import token_urlsafe
 from enum import Enum
 
 
 SYNC_KEY_BYTES = 16
+SCORE_INTERVAL = datetime.timedelta(minutes=1)
+SCORE_INTERVAL_ERROR = "You can only score once per minute."
 
 
 class SyncState(Enum):
@@ -26,7 +26,10 @@ current_score_key = None
 
 @app.route("/")
 def index():
-    return render_template("index.html", sync_state=state.name, sync_key=current_sync_key if state == SyncState.SYNC_WAITING else None)
+    users = db.user.find_many(order={
+        "score": "desc"
+    })
+    return render_template("index.html", sync_state=state.name, sync_key=current_sync_key if state == SyncState.SYNC_WAITING else None, users=users)
 
 
 @app.route("/sync")
@@ -57,25 +60,29 @@ def sync():
 @app.route("/score")
 def score():
     score_key = request.values.get("score_key")
-    username = str(escape(request.values.get("username"))[:32])
+    username = request.values.get("username")
+    if not username:
+        return "You must provide a username parameter", 400
+    else:
+        username = username[:32]
     if username and score_key == current_score_key:
         user = db.user.find_unique(where={
             "username": username
         })
         if user:
-            if user.last_score < (datetime.datetime.now() - datetime.timedelta(minutes=1)):
+            if user.last_score < (datetime.datetime.now().astimezone(None) - SCORE_INTERVAL):
                 db.user.update(where={
                     "username": username
                 }, data={
                     "score": user.score + 1
                 })
             else:
-                return "You can only score once per minute.", 429
+                return SCORE_INTERVAL_ERROR, 429
         else:
             user = db.user.create(data={
                 "username": username,
                 "score": 1
             })
-        return user.score
+        return str(user.score)
     else:
-        return "You must provide a username parameter, and a valid score_key parameter.", 400
+        return "You must provide a username parameter a valid score_key parameter.", 400
