@@ -25,9 +25,12 @@ nonce_hmacs_expirations = {}
 
 def clean_nonce_hmacs_expurations():
     now = datetime.now(timezone.utc)
-    for nonce_hmac, expiration in nonce_hmacs_expirations.values():
+    keys_to_be_deleted = []
+    for nonce_hmac, expiration in nonce_hmacs_expirations.items():
         if expiration < now:
-            del nonce_hmacs_expirations[nonce_hmac]
+            keys_to_be_deleted.append(nonce_hmac)
+    for key in keys_to_be_deleted:
+        del nonce_hmacs_expirations[key]
     return now
 
 @app.route("/")
@@ -45,21 +48,21 @@ def capture():
     username = request.values.get("username")
     alleged_hmac = request.values.get("hmac")
     if not username:
-        return "You must provide a username URL parameter.", 400
+        return "You must provide a username URL parameter.\n", 400
     matched_username = re.match(r"[a-zA-Z\d._-]{1,32}", username)
     if not matched_username or not matched_username.group() == username:
-        return "Your username can only include alphanumeric characters, underscores, hyphens, and periods. It can be a maximum of 32 characters long.", 400
+        return "Your username can only include alphanumeric characters, underscores, hyphens, and periods. It can be a maximum of 32 characters long.\n", 400
     if not alleged_hmac:
-        return "You must provide a hmac URL parameter, with a valid HMAC of a recent nonce.", 400
+        return "You must provide a hmac URL parameter, with a valid HMAC of a recent nonce.\n", 400
     try:
         alleged_hmac = bytes.fromhex(alleged_hmac)
     except ValueError:
-        return "Unable to decode hmac url parameter. It should be bytes in hexadecimal string format.", 400
+        return "Unable to decode hmac url parameter. It should be bytes in hexadecimal string format.\n", 400
     clean_nonce_hmacs_expurations()
     print(alleged_hmac)
     print(nonce_hmacs_expirations)
     if not nonce_hmacs_expirations.get(alleged_hmac):
-        return "Expired or invalid hmac url parameter.", 503
+        return "Expired or invalid hmac url parameter.\n", 503
     user = db.user.find_unique(where={"username": username}, include={"captures": {"where": {"completed": False}}})
     if user:
         assert len(user.captures) <= 1
@@ -88,4 +91,4 @@ def nonce():
 
 @app.route("/user/<username>")
 def user(username):
-    return f"Page for {username} coming soon."
+    return f"Page for {username} coming soon.\n"
