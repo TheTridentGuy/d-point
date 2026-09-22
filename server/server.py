@@ -83,7 +83,7 @@ def nonce():
     nonce_hmac = hmac.digest(OATH_SECRET, nonce, "sha256")
     nonce_hmacs_expirations[nonce_hmac] = now + NONCE_LIFESPAN
     print(nonce_hmacs_expirations)
-    return nonce
+    return nonce.hex()
 
 
 @app.route("/user/<username>")
