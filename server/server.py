@@ -8,6 +8,7 @@ from flask import Flask, render_template, request
 from datetime import datetime, timezone, timedelta
 from secrets import token_bytes
 
+
 dotenv.load_dotenv()
 NONCE_BYTES = 16
 NONCE_LIFESPAN = timedelta(seconds=30)
