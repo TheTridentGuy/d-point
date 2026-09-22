@@ -6,6 +6,7 @@ After=multi-user.target
 Restart=always
 WorkingDirectory=/path/to/client
 ExecStart=/usr/bin/python3 /path/to/client/client.py
+Environment="SERVER_HOSTNAME="
 
 [Install]
 WantedBy=multi-user.target
