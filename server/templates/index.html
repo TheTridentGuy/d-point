@@ -9,13 +9,11 @@
     <div class="flex-col">
         <div class="flex-row">
             <div id="title">D-Point Leaderboard</div>
-            <div class="flex-grow"></div>
-            <div>{{ sync_state }}</div>
         </div>
         <div class="flex-col">
-            {% for user in users %}
+            {% for timedelta, user in timedelta_users %}
                 <div class="flex-row">
-                    <div class="score">{{ loop.index ~ ". " }}<b>{{ user.username|e }}</b> <i>with {{ user.score }} points (last scored at {{ user.last_score }})</i></div>
+                    <div class="score">{{ loop.index ~ ". " }}<b>{{ user.username|e }}</b> <i>with {{ timedelta.total_seconds() }} points.</i></div>
                 </div>
             {% endfor %}
         </div>

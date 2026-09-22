@@ -10,15 +10,15 @@ datasource db {
 }
 
 model User {
-  id Int @id @default(autoincrement())
-  username String @unique
-  score Int
-  last_score DateTime @updatedAt
-  scores Score[]
+  username String @id
+  captures Capture[]
 }
 
-model Score {
+model Capture {
   id Int @id @default(autoincrement())
-  user User @relation(fields: [datetime], references: [id])
-  datetime DateTime @default(now())
+  username String
+  user User @relation(fields: [username], references: [username])
+  start DateTime @default(now())
+  end DateTime @default(now())
+  completed Boolean @default(false)
 }
