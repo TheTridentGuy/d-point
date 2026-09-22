@@ -1,7 +1,10 @@
 import os
 import re
+from hmac import compare_digest
+
 import dotenv
 import base64
+import hmac
 from flask import Flask, render_template, request
 from prisma import Prisma
 from datetime import datetime, timezone, timedelta
@@ -9,36 +12,53 @@ from secrets import token_bytes
 
 dotenv.load_dotenv()
 NONCE_BYTES = 16
+NONCE_LIFESPAN = timedelta(seconds=30)
 OATH_SECRET = base64.b32decode(os.environ["OATH_SECRET_B32"])
 
 
 db = Prisma()
 db.connect()
 app = Flask(__name__)
-current_nonce = token_bytes(NONCE_BYTES).hex()
+nonce_hmacs_expirations = {}
 
+
+def clean_nonce_hmacs_expurations():
+    now = datetime.now(timezone.utc)
+    for nonce_hmac, expiration in nonce_hmacs_expirations.values():
+        if expiration < now:
+            del nonce_hmacs_expirations[nonce_hmac]
+    return now
 
 @app.route("/")
 def index():
-    timedelta_users = []
+    timedeltas_users = []
     users = db.user.find_many(include={"captures": True})
     for user in users:
-        timedelta_users.append((sum([capture.end - capture.start for capture in user.captures], timedelta()), user))
-    timedelta_users.sort(key=lambda x: x[0].total_seconds(), reverse=True)
-    return render_template("index.html", timedelta_users=timedelta_users)
+        timedeltas_users.append((sum([capture.end - capture.start for capture in user.captures], timedelta()), user))
+    timedeltas_users.sort(key=lambda x: x[0].total_seconds(), reverse=True)
+    return render_template("index.html", timedeltas_users=timedeltas_users)
 
 
 @app.route("/capture")
 def capture():
     username = request.values.get("username")
-    response = request.values.get("hmac")
+    alleged_hmac = request.values.get("hmac")
     if not username:
         return "You must provide a username URL parameter.", 400
-    if not response:
-        return "You must provide a hmac URL parameter, with a valid HMAC of a recent nonce."
     matched_username = re.match(r"[a-zA-Z\d._-]{1,32}", username)
     if not matched_username or not matched_username.group() == username:
         return "Your username can only include alphanumeric characters, underscores, hyphens, and periods. It can be a maximum of 32 characters long.", 400
+    if not alleged_hmac:
+        return "You must provide a hmac URL parameter, with a valid HMAC of a recent nonce.", 400
+    try:
+        alleged_hmac = bytes.fromhex(alleged_hmac)
+    except ValueError:
+        return "Unable to decode hmac url parameter. It should be bytes in hexadecimal string format.", 400
+    clean_nonce_hmacs_expurations()
+    print(alleged_hmac)
+    print(nonce_hmacs_expirations)
+    if not nonce_hmacs_expirations.get(alleged_hmac):
+        return "Expired or invalid hmac url parameter.", 503
     user = db.user.find_unique(where={"username": username}, include={"captures": {"where": {"completed": False}}})
     if user:
         assert len(user.captures) <= 1
@@ -57,7 +77,12 @@ def capture():
 
 @app.route("/nonce")
 def nonce():
-    return current_nonce
+    now = clean_nonce_hmacs_expurations()
+    nonce = token_bytes(NONCE_BYTES)
+    nonce_hmac = hmac.digest(OATH_SECRET, nonce, "sha256")
+    nonce_hmacs_expirations[nonce_hmac] = now + NONCE_LIFESPAN
+    print(nonce_hmacs_expirations)
+    return nonce
 
 
 @app.route("/user/<username>")
