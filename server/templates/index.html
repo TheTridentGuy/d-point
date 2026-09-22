@@ -13,7 +13,7 @@
         <div class="flex-col">
             {% for timedelta, user in timedelta_users %}
                 <div class="flex-row">
-                    <div class="score">{{ loop.index ~ ". " }}<b>{{ user.username|e }}</b> <i>with {{ timedelta.total_seconds() }} points.</i></div>
+                    <div class="score">{{ loop.index ~ ". " }}<b><a href="/user/{{ user.username }}">{{ user.username }}</a></b> <i>with {{ timedelta.total_seconds() }} seconds on point ({{ user.captures|length }} captures).</i></div>
                 </div>
             {% endfor %}
         </div>

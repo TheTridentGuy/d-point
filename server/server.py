@@ -23,9 +23,9 @@ def index():
     timedelta_users = []
     users = db.user.find_many(include={"captures": True})
     for user in users:
-        timedelta_users.append((sum([capture.start - capture.end for capture in user.captures]), user))
+        timedelta_users.append((sum([capture.end - capture.start for capture in user.captures], timedelta()), user))
     timedelta_users.sort(key=lambda x: x[0].total_seconds(), reverse=True)
-    return render_template("index.html", timedelta_user=timedelta_users)
+    return render_template("index.html", timedelta_users=timedelta_users)
 
 
 @app.route("/capture")
@@ -36,7 +36,8 @@ def capture():
         return "You must provide a username URL parameter.", 400
     if not response:
         return "You must provide a hmac URL parameter, with a valid HMAC of a recent nonce."
-    if not re.match(r"[a-zA-Z\d._-]{1,32}", username) == username:
+    matched_username = re.match(r"[a-zA-Z\d._-]{1,32}", username)
+    if not matched_username or not matched_username.group() == username:
         return "Your username can only include alphanumeric characters, underscores, hyphens, and periods. It can be a maximum of 32 characters long.", 400
     user = db.user.find_unique(where={"username": username}, include={"captures": {"where": {"completed": False}}})
     if user:
@@ -48,8 +49,8 @@ def capture():
                 return "", 200
             else:
                 db.capture.update(where={"id": capture.id}, data={"completed": True})
-                db.capture.create(data={"username": username})
-                return "", 200
+        db.capture.create(data={"username": username})
+        return "", 200
     db.user.create(data={"username": username})
     return "", 200
 
@@ -57,3 +58,8 @@ def capture():
 @app.route("/nonce")
 def nonce():
     return current_nonce
+
+
+@app.route("/user/<username>")
+def user(username):
+    return f"Page for {username} coming soon."
