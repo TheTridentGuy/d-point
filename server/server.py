@@ -1,12 +1,10 @@
 import os
+import subprocess
 import re
-from hmac import compare_digest
-
 import dotenv
 import base64
 import hmac
 from flask import Flask, render_template, request
-from prisma import Prisma
 from datetime import datetime, timezone, timedelta
 from secrets import token_bytes
 
@@ -15,7 +13,8 @@ NONCE_BYTES = 16
 NONCE_LIFESPAN = timedelta(seconds=30)
 OATH_SECRET = base64.b32decode(os.environ["OATH_SECRET_B32"])
 
-
+subprocess.run("prisma db push")
+from prisma import Prisma
 db = Prisma()
 db.connect()
 app = Flask(__name__)
