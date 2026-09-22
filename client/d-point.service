@@ -1,0 +1,11 @@
+[Unit]
+Description=Keep a valid HMAC in /tmp/d-point
+After=multi-user.target
+
+[Service]
+Restart=always
+WorkingDirectory=/path/to/client
+ExecStart=/usr/bin/python3 /path/to/client/client.py
+
+[Install]
+WantedBy=multi-user.target
