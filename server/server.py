@@ -12,6 +12,7 @@ from secrets import token_bytes
 dotenv.load_dotenv()
 NONCE_BYTES = 16
 NONCE_LIFESPAN = timedelta(minutes=5, seconds=10)
+SCORE_INTERVAL = timedelta(minutes=5, seconds=10)
 OATH_SECRET = base64.b32decode(os.environ["OATH_SECRET_B32"])
 
 
@@ -67,7 +68,7 @@ def capture():
         assert len(user.captures) <= 1
         if len(user.captures) == 1:
             capture = user.captures[0]
-            if datetime.now(timezone.utc) - capture.end < timedelta(minutes=1):
+            if datetime.now(timezone.utc) - capture.end < SCORE_INTERVAL:
                 db.capture.update(where={"id": capture.id}, data={"end": datetime.now(timezone.utc)})
                 return "", 200
             else:
