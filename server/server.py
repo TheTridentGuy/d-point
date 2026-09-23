@@ -4,19 +4,22 @@ import re
 import dotenv
 import base64
 import hmac
+import logging
 from flask import Flask, render_template, request
 from datetime import datetime, timezone, timedelta
 from secrets import token_bytes
 
 
 dotenv.load_dotenv()
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+log = logging.getLogger(__name__)
 NONCE_BYTES = 16
 NONCE_LIFESPAN = timedelta(minutes=5, seconds=10)
 SCORE_INTERVAL = timedelta(minutes=5, seconds=10)
 OATH_SECRET = base64.b32decode(os.environ["OATH_SECRET_B32"])
 
 
-subprocess.run(["prisma", "db", "push"])
+subprocess.run(["prisma", "db", "push"], check=True)
 from prisma import Prisma
 db = Prisma()
 db.connect()
@@ -27,11 +30,15 @@ nonce_hmacs_expirations = {}
 def clean_nonce_hmacs_expirations():
     now = datetime.now(timezone.utc)
     keys_to_be_deleted = []
+    log.debug(f"HMACs and expirations before cleaning: {nonce_hmacs_expirations}")
     for nonce_hmac, expiration in nonce_hmacs_expirations.items():
         if expiration < now:
             keys_to_be_deleted.append(nonce_hmac)
+    log.debug(f"We're going to discard these HMACs: {keys_to_be_deleted}")
     for key in keys_to_be_deleted:
+        logging.debug(f"Discarding HMAC {key}, which expired at {nonce_hmacs_expirations[key]}")
         del nonce_hmacs_expirations[key]
+    log.debug(f"HMACs and expirations after cleaning: {nonce_hmacs_expirations}")
     return now
 
 
@@ -49,6 +56,7 @@ def index():
 def capture():
     username = request.values.get("username")
     alleged_hmac = request.values.get("hmac")
+    log.debug(f"Recieved capture request with username: {username} and alleged HMAC: {alleged_hmac}")
     if not username:
         return "You must provide a username URL parameter.\n", 400
     matched_username = re.match(r"[a-zA-Z\d._-]{1,32}", username)
@@ -60,7 +68,9 @@ def capture():
         alleged_hmac = bytes.fromhex(alleged_hmac)
     except ValueError:
         return "Unable to decode hmac url parameter. It should be bytes in hexadecimal string format.\n", 400
+    log.debug(f"Alleged HMAC as bytes: {alleged_hmac}")
     clean_nonce_hmacs_expirations()
+    log.debug(f"Tried getting alleged HMAC from HMACs and expirations: {nonce_hmacs_expirations.get(alleged_hmac)}")
     if not nonce_hmacs_expirations.get(alleged_hmac):
         return "Expired or invalid hmac url parameter.\n", 503
     user = db.user.find_unique(where={"username": username}, include={"captures": {"where": {"completed": False}}})
