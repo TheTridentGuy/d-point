@@ -23,7 +23,7 @@ app = Flask(__name__)
 nonce_hmacs_expirations = {}
 
 
-def clean_nonce_hmacs_expurations():
+def clean_nonce_hmacs_expirations():
     now = datetime.now(timezone.utc)
     keys_to_be_deleted = []
     for nonce_hmac, expiration in nonce_hmacs_expirations.items():
@@ -32,6 +32,7 @@ def clean_nonce_hmacs_expurations():
     for key in keys_to_be_deleted:
         del nonce_hmacs_expirations[key]
     return now
+
 
 @app.route("/")
 def index():
@@ -58,7 +59,7 @@ def capture():
         alleged_hmac = bytes.fromhex(alleged_hmac)
     except ValueError:
         return "Unable to decode hmac url parameter. It should be bytes in hexadecimal string format.\n", 400
-    clean_nonce_hmacs_expurations()
+    clean_nonce_hmacs_expirations()
     print(alleged_hmac)
     print(nonce_hmacs_expirations)
     if not nonce_hmacs_expirations.get(alleged_hmac):
@@ -81,7 +82,7 @@ def capture():
 
 @app.route("/nonce")
 def nonce():
-    now = clean_nonce_hmacs_expurations()
+    now = clean_nonce_hmacs_expirations()
     nonce = token_bytes(NONCE_BYTES)
     nonce_hmac = hmac.digest(OATH_SECRET, nonce, "sha256")
     nonce_hmacs_expirations[nonce_hmac] = now + NONCE_LIFESPAN
