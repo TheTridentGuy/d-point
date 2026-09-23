@@ -37,7 +37,7 @@ def clean_nonce_hmacs_expirations():
 @app.route("/")
 def index():
     timedeltas_users = []
-    users = db.user.find_many(include={"captures": True})
+    users = db.user.find_many(include={"captures": {"where": {"start": {"gt": datetime.now(timezone.utc) - timedelta(days=3)}}}})
     for user in users:
         timedeltas_users.append((sum([capture.end - capture.start for capture in user.captures], timedelta()), user))
     timedeltas_users.sort(key=lambda x: x[0].total_seconds(), reverse=True)
@@ -60,8 +60,6 @@ def capture():
     except ValueError:
         return "Unable to decode hmac url parameter. It should be bytes in hexadecimal string format.\n", 400
     clean_nonce_hmacs_expirations()
-    print(alleged_hmac)
-    print(nonce_hmacs_expirations)
     if not nonce_hmacs_expirations.get(alleged_hmac):
         return "Expired or invalid hmac url parameter.\n", 503
     user = db.user.find_unique(where={"username": username}, include={"captures": {"where": {"completed": False}}})
@@ -86,7 +84,6 @@ def nonce():
     nonce = token_bytes(NONCE_BYTES)
     nonce_hmac = hmac.digest(OATH_SECRET, nonce, "sha256")
     nonce_hmacs_expirations[nonce_hmac] = now + NONCE_LIFESPAN
-    print(nonce_hmacs_expirations)
     return nonce.hex()
 
 
