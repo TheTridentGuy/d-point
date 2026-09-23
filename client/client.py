@@ -8,7 +8,7 @@ from yubikit.oath import OathSession
 
 SERVER_HOSTNAME = os.environ["SERVER_HOSTNAME"]
 OATH_CREDENTIAL_ID = b"d-point:d-point"
-UPDATE_INTERVAL_SECONDS = 30
+UPDATE_INTERVAL_SECONDS = 60
 
 
 device, info = list_all_devices([SmartCardConnection])[0]

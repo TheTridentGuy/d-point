@@ -11,7 +11,7 @@ from secrets import token_bytes
 
 dotenv.load_dotenv()
 NONCE_BYTES = 16
-NONCE_LIFESPAN = timedelta(seconds=30)
+NONCE_LIFESPAN = timedelta(minutes=1, seconds=5)
 OATH_SECRET = base64.b32decode(os.environ["OATH_SECRET_B32"])
 
 
