@@ -95,6 +95,8 @@ def nonce():
     nonce = token_bytes(NONCE_BYTES)
     nonce_hmac = hmac.digest(OATH_SECRET, nonce, "sha256")
     nonce_hmacs_expirations[nonce_hmac] = now + NONCE_LIFESPAN
+    log.debug(f"Issued nonce with HMAC: {nonce_hmac}, it will expire at {nonce_hmacs_expirations[nonce_hmac]}")
+    log.debug(f"HMACs and expirations: {nonce_hmacs_expirations}")
     return nonce.hex()
 
 
