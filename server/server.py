@@ -4,7 +4,6 @@ import re
 import dotenv
 import base64
 import hmac
-import logging
 from flask import Flask, render_template, request
 from datetime import datetime, timezone, timedelta
 from secrets import token_bytes
@@ -14,6 +13,7 @@ dotenv.load_dotenv()
 NONCE_BYTES = 16
 NONCE_LIFESPAN = timedelta(minutes=5, seconds=10)
 SCORE_INTERVAL = timedelta(minutes=5, seconds=10)
+LEADERBOARD_INTERVAL = timedelta(days=3)
 OATH_SECRET = base64.b32decode(os.environ["OATH_SECRET_B32"])
 
 
@@ -23,10 +23,11 @@ db = Prisma()
 db.connect()
 app = Flask(__name__)
 nonce_hmacs_expirations = {}
+utc_now = lambda: datetime.now(timezone.utc)
 
 
 def clean_nonce_hmacs_expirations():
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     keys_to_be_deleted = []
     for nonce_hmac, expiration in nonce_hmacs_expirations.items():
         if expiration < now:
@@ -39,9 +40,9 @@ def clean_nonce_hmacs_expirations():
 @app.route("/")
 def index():
     timedeltas_users = []
-    users = db.user.find_many(include={"captures": {"where": {"start": {"gt": datetime.now(timezone.utc) - timedelta(days=3)}}}})
+    users = db.user.find_many(include={"captures": {"where": {"end": {"gt": utc_now() - LEADERBOARD_INTERVAL}}}})
     for user in users:
-        timedeltas_users.append((sum([capture.end - capture.start for capture in user.captures], timedelta()), user))
+        timedeltas_users.append((sum([capture.end - max(capture.start, utc_now() - LEADERBOARD_INTERVAL) for capture in user.captures], timedelta()), user))
     timedeltas_users.sort(key=lambda x: x[0].total_seconds(), reverse=True)
     return render_template("index.html", timedeltas_users=timedeltas_users)
 
@@ -69,8 +70,8 @@ def capture():
         assert len(user.captures) <= 1
         if len(user.captures) == 1:
             capture = user.captures[0]
-            if datetime.now(timezone.utc) - capture.end < SCORE_INTERVAL:
-                db.capture.update(where={"id": capture.id}, data={"end": datetime.now(timezone.utc)})
+            if utc_now() - capture.end < SCORE_INTERVAL:
+                db.capture.update(where={"id": capture.id}, data={"end": utc_now()})
                 return "", 200
             else:
                 db.capture.update(where={"id": capture.id}, data={"completed": True})
