@@ -8,4 +8,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN prisma generate
 EXPOSE 5000
-CMD ["gunicorn", "-w", "10", "-b", "0.0.0.0:5000", "server:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "server:app"]
