@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>D-Point - Leaderboard</title>
+    <title>D-Point CTF</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="flex-col">
         <div class="flex-row">
-            <div id="title">D-Point Leaderboard (last 3 days)</div>
+            <div id="title">D-Point CTF</div>
         </div>
         <div class="flex-col">
             {% for timedelta, user in timedeltas_users %}

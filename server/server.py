@@ -92,4 +92,9 @@ def nonce():
 
 @app.route("/user/<username>")
 def user(username):
-    return f"Page for {username} coming soon.\n"
+    user = db.user.find_unique(where={"username": username}, include={"captures":{"orderBy": {"end": "desc"}}})
+    if not user:
+        return "User does not exist.", 404
+    total_time_on_point = sum([capture.end - capture.start for capture in user.captures], timedelta())
+    active = len(user.captures) > 0 and utc_now() - user.captures[0].end < SCORE_INTERVAL
+    return render_template("user.html", username=username, total_time_on_point=total_time_on_point, captures=user.captures, active=active)
