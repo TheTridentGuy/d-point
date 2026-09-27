@@ -6,17 +6,28 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="flex-col">
-        <div class="flex-row">
-            <div id="title">D-Point CTF</div>
-        </div>
-        <div class="flex-col">
+<div class="flex-row flex-grow">
+    <div class="flex-col flex-grow">
+        <h1>D-Point CTF Leaderboard (past 3 days):</h1>
+        <ol>
             {% for timedelta, user in timedeltas_users %}
-                <div class="flex-row">
-                    <div class="score">{{ loop.index ~ ". " }}<b><a href="/user/{{ user.username }}">{{ user.username }}</a></b> <i>with {{ timedelta.total_seconds() }} seconds on point ({{ user.captures|length }} captures).</i></div>
-                </div>
+                <li class="score"><b><a href="/user/{{ user.username }}">{{ user.username }}</a></b>
+                    <i>with {{ timedelta.total_seconds() }} seconds on point ({{ user.captures|length }} captures).</i>
+                </li>
             {% endfor %}
-        </div>
+        </ol>
     </div>
+    <div class="flex-col">
+        <h2>Currently active players:</h2>
+        <ul>
+            {% for username in active_usernames %}
+                <li><a href="/user/{{ username }}">{{ username }}</a></li>
+            {% endfor %}
+        </ul>
+        {% if active_usernames|length == 0 %}
+            <i>No players are currently active.</i>
+        {% endif %}
+    </div>
+</div>
 </body>
 </html>

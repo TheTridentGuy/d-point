@@ -1,13 +1,13 @@
-import os
-import subprocess
-import re
-import dotenv
 import base64
 import hmac
-from flask import Flask, render_template, request
+import os
+import re
+import subprocess
 from datetime import datetime, timezone, timedelta
 from secrets import token_bytes
 
+import dotenv
+from flask import Flask, render_template, request
 
 dotenv.load_dotenv()
 NONCE_BYTES = 16
@@ -16,9 +16,9 @@ SCORE_INTERVAL = timedelta(minutes=5, seconds=10)
 LEADERBOARD_INTERVAL = timedelta(days=3)
 OATH_SECRET = base64.b32decode(os.environ["OATH_SECRET_B32"])
 
-
 subprocess.run(["prisma", "db", "push"], check=True)
 from prisma import Prisma
+
 db = Prisma()
 db.connect()
 app = Flask(__name__)
@@ -26,29 +26,35 @@ nonce_hmacs_expirations = {}
 utc_now = lambda: datetime.now(timezone.utc)
 
 
-def clean_nonce_hmacs_expirations():
-    now = utc_now()
+def clean_nonce_hmacs_expirations(now):
     keys_to_be_deleted = []
     for nonce_hmac, expiration in nonce_hmacs_expirations.items():
         if expiration < now:
             keys_to_be_deleted.append(nonce_hmac)
     for key in keys_to_be_deleted:
         del nonce_hmacs_expirations[key]
-    return now
 
 
 @app.route("/")
 def index():
+    now = utc_now()
     timedeltas_users = []
-    users = db.user.find_many(include={"captures": {"where": {"end": {"gt": utc_now() - LEADERBOARD_INTERVAL}}}})
+    active_usernames = []
+    users = db.user.find_many(
+        include={"captures": {"where": {"end": {"gt": now - LEADERBOARD_INTERVAL}}, "orderBy": {"end": "desc"}}})
     for user in users:
-        timedeltas_users.append((sum([capture.end - max(capture.start, utc_now() - LEADERBOARD_INTERVAL) for capture in user.captures], timedelta()), user))
+        timedeltas_users.append(
+            (sum([capture.end - max(capture.start, now - LEADERBOARD_INTERVAL) for capture in user.captures],
+                 timedelta()), user))
+        if len(user.captures) > 0 and now - user.captures[0].end < SCORE_INTERVAL:
+            active_usernames.append(user.username)
     timedeltas_users.sort(key=lambda x: x[0].total_seconds(), reverse=True)
-    return render_template("index.html", timedeltas_users=timedeltas_users)
+    return render_template("index.html", timedeltas_users=timedeltas_users, active_usernames=active_usernames)
 
 
 @app.route("/capture")
 def capture():
+    now = utc_now()
     username = request.values.get("username")
     alleged_hmac = request.values.get("hmac")
     if not username:
@@ -62,7 +68,7 @@ def capture():
         alleged_hmac = bytes.fromhex(alleged_hmac)
     except ValueError:
         return "Unable to decode hmac url parameter. It should be bytes in hexadecimal string format.\n", 400
-    clean_nonce_hmacs_expirations()
+    clean_nonce_hmacs_expirations(now)
     if not nonce_hmacs_expirations.get(alleged_hmac):
         return "Expired or invalid hmac url parameter.\n", 503
     user = db.user.find_unique(where={"username": username}, include={"captures": {"where": {"completed": False}}})
@@ -70,8 +76,8 @@ def capture():
         assert len(user.captures) <= 1
         if len(user.captures) == 1:
             capture = user.captures[0]
-            if utc_now() - capture.end < SCORE_INTERVAL:
-                db.capture.update(where={"id": capture.id}, data={"end": utc_now()})
+            if now - capture.end < SCORE_INTERVAL:
+                db.capture.update(where={"id": capture.id}, data={"end": now})
                 return "", 200
             else:
                 db.capture.update(where={"id": capture.id}, data={"completed": True})
@@ -83,7 +89,8 @@ def capture():
 
 @app.route("/nonce")
 def nonce():
-    now = clean_nonce_hmacs_expirations()
+    now = utc_now()
+    clean_nonce_hmacs_expirations(now)
     nonce = token_bytes(NONCE_BYTES)
     nonce_hmac = hmac.digest(OATH_SECRET, nonce, "sha256")
     nonce_hmacs_expirations[nonce_hmac] = now + NONCE_LIFESPAN
@@ -92,9 +99,7 @@ def nonce():
 
 @app.route("/user/<username>")
 def user(username):
-    user = db.user.find_unique(where={"username": username}, include={"captures":{"orderBy": {"end": "desc"}}})
+    user = db.user.find_unique(where={"username": username}, include={"captures": {"orderBy": {"end": "desc"}}})
     if not user:
         return "User does not exist.", 404
-    total_time_on_point = sum([capture.end - capture.start for capture in user.captures], timedelta())
-    active = len(user.captures) > 0 and utc_now() - user.captures[0].end < SCORE_INTERVAL
-    return render_template("user.html", username=username, total_time_on_point=total_time_on_point, captures=user.captures, active=active)
+    return f"User page for {user.username} coming soon."

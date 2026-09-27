@@ -1,16 +1,15 @@
 import os
 import time
-import requests
 from datetime import timedelta
+
+import requests
 from ykman.device import list_all_devices
 from yubikit.core.smartcard import SmartCardConnection
 from yubikit.oath import OathSession
 
-
 SERVER_HOSTNAME = os.environ["SERVER_HOSTNAME"]
 OATH_CREDENTIAL_ID = b"d-point:d-point"
 UPDATE_INTERVAL = timedelta(minutes=5)
-
 
 device, info = list_all_devices([SmartCardConnection])[0]
 print(f"Found YubiKey {info.version_name}: {info.serial}")

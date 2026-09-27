@@ -1,7 +1,7 @@
-import qrcode
 import base64
 import secrets
 
+import qrcode
 
 secret = base64.b32encode(secrets.token_bytes(32)).decode("ascii")
 uri = f"otpauth://totp/d-point?secret={secret}&issuer=d-point&algorithm=SHA256"
