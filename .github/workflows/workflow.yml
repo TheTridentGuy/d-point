@@ -5,8 +5,11 @@ on:
     branches: main
 
 jobs:
-  login:
+  docker:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/
     steps:
       - name: Login to Docker Hub
         uses: docker/login-action@v4
